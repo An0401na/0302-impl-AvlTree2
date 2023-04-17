@@ -1,6 +1,8 @@
 import exceptions.CustomDuplicatedElementException;
 import exceptions.CustomNoSuchElementException;
 
+import javax.sound.midi.Soundbank;
+
 public class AvlTree implements iAvlTree{
     private Node root;
     private int size;
@@ -16,6 +18,7 @@ public class AvlTree implements iAvlTree{
     }
 
     private void insertNode(Node node, int value) {
+
         //삽입과정
         if(value < node.value){
             if(node.left == null){
@@ -31,7 +34,7 @@ public class AvlTree implements iAvlTree{
                 node.right.parent = node;
                 size++;
             }else{
-                insertNode(node.left, value);
+                insertNode(node.right, value);
             }
         }else{
             throw new CustomDuplicatedElementException();
@@ -41,6 +44,7 @@ public class AvlTree implements iAvlTree{
         node.height = updateHeight(node);
         //밸런스 확인하고 맞추기
         int balance = getBalanceFactor(node);
+
 
         //왼쪽 - 오른쪽 => 결과가 양수 이면 왼쪽 서브트리의 높이가 더 크다 즉, 왼쪽으로 편향되어 있다.
         //LL인 경우 => Right Rotation을 진행해주어야 한다.
@@ -64,9 +68,11 @@ public class AvlTree implements iAvlTree{
          *    LR    (Left)  L    b 	  (Right)   a  b
          *   a  b            a
          */
-        if(balance > 1 && value > node.left.value) {
-            rotateLeft(node.left);
-            rotateRight(node);
+        if(node.left != null){
+            if(balance > 1 && value > node.left.value) {
+                rotateLeft(node.left);
+                rotateRight(node);
+            }
         }
 
         // 자식의 값보다 더 작다면 (넣은노드(왼쪽)-오른쪽자식-노드)일테니까
@@ -78,9 +84,13 @@ public class AvlTree implements iAvlTree{
 	    *     RL      (Right)  	a  R  (Left)    a   b
 	    *    a  b                 b
 	    */
-        if(balance < -1 && value < node.right.value) {
-            rotateRight(node.right);
-            rotateLeft(node);
+        if (node.right != null) {
+            if(balance < -1 && value < node.right.value) {
+                System.out.println(node.value);
+                rotateRight(node.right);
+                rotateLeft(node);
+            }
+
         }
     }
 
@@ -89,11 +99,11 @@ public class AvlTree implements iAvlTree{
         if(node.left==null && node.right!=null){
             height = node.right.height+1;
         }else if(node.left != null && node.right == null){
-           height = node.left.height+1;
+            height = node.left.height+1;
         }else if(node.left == null && node.right==null){
             height =1;
         }else {
-           height = Math.max(node.left.height, node.right.height) + 1;
+            height = Math.max(node.left.height, node.right.height) + 1;
         }
         return height;
 
@@ -102,7 +112,20 @@ public class AvlTree implements iAvlTree{
     //root를 기준으로 왼쪽 서브트리와 오른쪽 서브트리의 차이를 구하는 함수
     private int getBalanceFactor(Node node) {
         if(node == null) return 0;
-        else return node.left.height - node.right.height;
+        else {
+            int leftHeight = 0;
+            int rightHeight =0;
+            if(node.left == null || node.right==null){
+                if(node.left != null){
+                    return node.left.height;
+                }
+                if(node.right != null){
+                    return -(node.right.height);
+                }
+                return 0;
+            }
+            return node.left.height - node.right.height;
+        }
     }
 
 
@@ -115,6 +138,7 @@ public class AvlTree implements iAvlTree{
         if(node == null) {
             return false;
         }
+
 
         if(node.value == value) {
             return true;
@@ -135,7 +159,7 @@ public class AvlTree implements iAvlTree{
         Node target = findNodeByValue(root, value);
 
         //삭제할 노드에 자식이 없는 경우
-        //-> 부모에서 타겟과 연결된 쪽의 연결 끊기 
+        //-> 부모에서 타겟과 연결된 쪽의 연결 끊기
         if(target.left == null && target.right == null) {
             if(target == root) {
                 root = null;
@@ -186,7 +210,6 @@ public class AvlTree implements iAvlTree{
         }else {
             //자식이 둘 다 있을 경우
             Node replaceNode = findReplaceNode(target.left);
-            //왼쪽으로 왜가지.. ? 오른쪽의 가장 작은 값을 찾아야하는거 아닌가...
 
             if(target == root) {
                 root = replaceNode;
@@ -222,10 +245,10 @@ public class AvlTree implements iAvlTree{
             replaceNode.left = target.left;
             replaceNode.right = target.right;
         }
-        size++;
+        size--;
 
         checkBalance(target.parent);
-    
+
     }
 
     //삭제할 노드와 대체할 노드 찾기
@@ -309,17 +332,29 @@ public class AvlTree implements iAvlTree{
         }
         return false;
     }
-    
+
     @Override
     public int size() {
         return size;
     }
-    
+
+    //RR인 경우
+    /*     node           	   R
+               R     =>  node     RR
+     * 		 RL RR          RL
+     */
     @Override
     public void rotateLeft(Node node) {
+        if(node == root){
+            root = node.right;
+        }
         Node R = node.right;
         Node RL = node.right.left;
 
+
+        if(node.parent != null){
+            node.parent.right = R;
+        }
         R.parent = node.parent;
 
         node.parent = R;
@@ -327,17 +362,31 @@ public class AvlTree implements iAvlTree{
 
         R.left = node;
 
-        RL.parent = node;
+        if (RL != null){
+            RL.parent = node;
+        }
 
-        node.height = Math.max(node.left.height, node.right.height)+1;
-        R.height = Math.max(R.left.height, R.right.height)+1;
+        node.height = updateHeight(node);
+        R.height = updateHeight(R);
     }
-    
+
+    //LL인 경우
+    /*     node           L
+          L       =>  LL    node
+     *  LL LR              LR
+     */
     @Override
     public void rotateRight(Node node) {
+        if(node == root){
+            root = node.left;
+        }
         Node L = node.left;
         Node LR = node.left.right;
 
+
+        if(node.parent != null){
+            node.parent.left = L;
+        }
         L.parent = node.parent;
 
         node.parent = L;
@@ -345,10 +394,80 @@ public class AvlTree implements iAvlTree{
 
         L.right = node;
 
-        LR.parent = node;
+        if(LR!=null) {
+            LR.parent = node;
+        }
 
-        node.height = Math.max(node.left.height, node.right.height)+1;
-        L.height = Math.max(L.left.height, L.right.height)+1;
+        node.height = updateHeight(node);
+        L.height = updateHeight(L);
     }
+
+
+
+    //테스트 코드를 위한 함수
+    public int getRootHeight(){
+        if(root == null){
+            return 0;
+        }
+        return root.height;
+    }
+
+    public int getRootValue(){
+        if(root == null){
+            return -1;
+        }
+        return root.value;
+    }
+
+    public Node findByValue(int value) {
+        return findByValueRecur(root, value);
+    }
+    public Node findByValueRecur(Node node, int value) {
+        if(node == null) {
+            return null;
+        }
+
+        if(node.value == value) {
+            return node;
+        }
+
+        if(value < node.value) {
+            return findByValueRecur(node.left, value);
+        }else {
+            return findByValueRecur(node.right, value);
+        }
+    }
+    public int getParentValue(int value){
+        Node node = findByValueRecur(root, value);
+        if(node == null){
+             return 0;
+        }
+        if(node.parent == null){
+            return -1;
+        }
+        return node.parent.value;
+    }
+
+    public int getLeftValue(int value){
+        Node node = findByValueRecur(root, value);
+        if(node == null){
+            return 0;
+        }
+        if(node.left == null){
+            return -1;
+        }
+        return node.left.value;
+    }
+    public int getRightValue(int value){
+        Node node = findByValueRecur(root, value);
+        if(node == null){
+            return 0;
+        }
+        if(node.right == null){
+            return -1;
+        }
+        return node.right.value;
+    }
+
 
 }
